@@ -1,0 +1,34 @@
+package clases;
+
+import java.net.InetSocketAddress;
+import java.net.Socket;
+
+public class Cliente implements Runnable {
+
+	@Override
+	public void run() {
+		
+		
+		String message = "Hola buenas";//declaramos la variable con el nombre que le vamos a enviar al servidor
+		InetSocketAddress rutaServidor = new InetSocketAddress("localhost", 9876);
+		Socket socket = new Socket();		
+		try {
+			
+			Cifrado cifrado = new Cifrado();
+			socket.setReuseAddress(true);
+			socket.connect(rutaServidor);
+			
+			
+			cifrado.enviarClavePublica(socket.getOutputStream());
+			cifrado.recibirClavePublica(socket.getInputStream());
+
+			cifrado.enviarMensajeEncriptado(message.getBytes(), socket.getOutputStream());
+
+			String desencriptarMensaje = cifrado.recibirMensajeEncriptado(socket.getInputStream());
+			System.out.println("Cliente: " + mensajeDesencriptado);
+			socket.close();
+		} catch (Exception e) {
+			System.out.println(e);
+		}		
+	}
+}

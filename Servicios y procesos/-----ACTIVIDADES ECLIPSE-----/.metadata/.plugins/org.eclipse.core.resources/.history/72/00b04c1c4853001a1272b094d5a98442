@@ -1,0 +1,35 @@
+package clases;
+
+import java.io.*;
+import java.net.Socket;
+
+public class Worker implements Runnable {
+
+	private Cifrado cifrado;
+	private Socket conexion;
+	
+
+	public Worker(Socket c, Cifrado gc) {
+		this.conexion = c;
+		cifrado = gc;
+	}
+
+	@Override
+	public void run() {
+		String message = "Muy bien";
+		try {
+			cifrado.recibirClavePublica(conexion.getInputStream());
+			cifrado.enviarClavePublica(conexion.getOutputStream());
+
+			String decryptedMessage = gestorCif.receiveEncryptedMessage(conexion.getInputStream());
+			System.out.println("Servidor: " + decryptedMessage);
+
+			cifrado.sendEncryptedMessage(message.getBytes(), conexion.getOutputStream());
+			conexion.close();
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+
+	}
+
+}

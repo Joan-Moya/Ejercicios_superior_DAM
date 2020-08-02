@@ -1,0 +1,84 @@
+package clases;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
+
+public class Worker implements Runnable {
+
+	private Socket conexion;
+
+	public Worker(Socket c) {
+		this.conexion = c;
+	}
+
+	@Override
+	public void run() {
+		try {
+			//instanciamos el cifrado
+			GestorCifrado gestorCifrado = new GestorCifrado();
+			
+			//clave publica del servidor
+			PublicKey clavePublicaServidor = gestorCifrado.getPublica();//Generamos la clave publica.
+			byte[] clavePublicaBytesServidor = clavePublicaServidor.getEncoded();//convertimos la clave publica a tipo byte.
+			
+			//Clave privada del cliente.
+			PrivateKey clavePrivadaServidor = gestorCifrado.getPrivada();//Generamos la clave privada.
+			
+			
+			//Streams de entrada y salida.
+			InputStream is = conexion.getInputStream();
+			OutputStream os = conexion.getOutputStream();
+			InputStreamReader isr = new InputStreamReader(is);
+			OutputStreamWriter osw = new OutputStreamWriter(os);
+			BufferedReader bf = new BufferedReader(isr);
+			PrintWriter pw = new PrintWriter(osw);
+			
+			//Recibimos la clave publica del cliente
+			byte[] clavePublicaBytesCliente = new byte[1024];
+			is.read(clavePublicaBytesCliente);
+			PublicKey clavePublicaCliente = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(clavePublicaBytesCliente));//Recuperamos la clave publica a tipo PublicKey.
+			
+			//Enviamos la clave publica del servidor al cliente.
+			os.write(clavePublicaBytesServidor);//usamos os para enviar ya que el tipo de dato es byte.
+			os.flush();
+			
+			
+			//recibimos el mensaje encriptado del cliente.
+			byte[] mensajeEncriptado = new byte[128];
+			is.read(mensajeEncriptado);// guardamos el mensaje encriptada en la variable.
+			byte[] mensajeDescifradaBytes = gestorCifrado.descifrar(mensajeEncriptado, clavePrivadaServidor);//desencriptamos el mensaje
+			String  mensajeDescifrado = new String(mensajeDescifradaBytes, "UTF-8");//Pasamos de bytes a String la url descifrada
+			
+			System.out.println("El mensaje del cliente es: " + mensajeDescifrado);
+			Thread.sleep(2000);
+			
+			//Enviamos respuesta encriptada al cliente.
+			String respuesta = "�Como estas?";
+			byte[] respuestaByte = respuesta.getBytes();
+			byte[] respuestaByteEncriptada = gestorCifrado.cifrar(respuestaByte, clavePublicaCliente);
+			os.write(respuestaByteEncriptada);
+			os.flush();
+			
+			
+			//cerramos conexiones
+			is.close();
+			os.close();
+			isr.close();
+			osw.close();
+			bf.close();
+			pw.close();
+
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+	}
+}
